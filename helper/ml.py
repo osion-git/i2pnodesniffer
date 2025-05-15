@@ -11,20 +11,19 @@ def undersample_df(df, target_col='prediction', seed=42):
     :param seed: random seed for reproducibility
     :return: balanced DataFrame
     """
-    # Split into both classes
-    df0 = df[df[target_col] == 0]
-    df1 = df[df[target_col] == 1]
+    # Dynamically detect number of classes and smallest class
+    class_counts = df[target_col].value_counts()
+    n_min = class_counts.min()
 
-    # Size of the minority class
-    n = min(len(df0), len(df1))
+    # Extract random entries for each class
+    balanced_parts = [
+        df[df[target_col] == cls].sample(n=n_min, random_state=seed)
+        for cls in class_counts.index
+    ]
 
-    # Randomly sample from each class (dominant class is reduced)
-    df0_samp = df0.sample(n, random_state=seed)
-    df1_samp = df1.sample(n, random_state=seed)
-
-    # Combine
-    df_bal = pd.concat([df0_samp, df1_samp]) \
-        .sample(frac=1, random_state=seed) \
+    df_balanced = (
+        pd.concat(balanced_parts)
+        .sample(frac=1, random_state=seed)
         .reset_index(drop=True)
-
-    return df_bal
+    )
+    return df_balanced
