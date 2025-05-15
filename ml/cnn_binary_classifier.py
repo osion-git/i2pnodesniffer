@@ -51,7 +51,9 @@ model = models.Sequential([
     ),
     layers.BatchNormalization(),
     layers.Activation('relu'),
+    layers.Dropout(0.2),
     layers.MaxPooling1D(pool_size=2),
+
     layers.Conv1D(
         filters=32,
         kernel_size=3,
@@ -60,6 +62,7 @@ model = models.Sequential([
     ),
     layers.BatchNormalization(),
     layers.Activation('relu'),
+    layers.Dropout(0.3),
 
     layers.GlobalMaxPooling1D(),
     layers.Dense(
@@ -73,7 +76,6 @@ model = models.Sequential([
 model.compile(optimizer='adam',
               loss='binary_crossentropy',
               metrics=['accuracy'])
-
 model.summary()
 log_dir = os.path.join("logs", "cnn")
 tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -91,7 +93,7 @@ early_stopping = EarlyStopping(
     min_delta=1e-4,
     verbose=1
 )
-#Training
+# Training
 history = model.fit(
     X_train, y_train,
     epochs=1000,
@@ -100,12 +102,13 @@ history = model.fit(
     callbacks=[tensorboard_callback, reduce_lr, early_stopping]
 )
 
-#Save model
+# Save model
 os.makedirs("saved_model", exist_ok=True)
 model.save("saved_model/cnn_model.keras")
-# Evaluate model
+# Evaluation
 loss, acc = model.evaluate(X_test, y_test)
 print(f"Test Loss: {loss:.4f}, Test Accuracy: {acc:.4f}")
+
 
 def predict_packet(df_single):
     x = df_single.values
@@ -113,16 +116,19 @@ def predict_packet(df_single):
     x_cnn = x_scaled.reshape((1, x_scaled.shape[1], 1))
     prob = model.predict(x_cnn)[0, 0]
     return 1 if prob > 0.5 else 0
+
+
 correct = 0
 total = len(df_manual_test)
 
 for i in range(total):
     df_sample = \
-        df_manual_test.drop(columns=['payload_bytes', 'timestamp', 'frame_num', 'old_frame_num', 'prediction']).iloc[[i]]
+        df_manual_test.drop(columns=['payload_bytes', 'timestamp', 'frame_num', 'old_frame_num', 'prediction']).iloc[
+            [i]]
     true_label = df_manual_test['prediction'].iloc[i]
     pred_label = predict_packet(df_sample)
-    print(f"{i + 1}: True label = {true_label}, Predicted = {pred_label}")
+    print(f"{i + 1}: True class = {true_label}, Predicted class = {pred_label}")
     if pred_label == true_label:
         correct += 1
 accuracy_percent = (100 * correct) / total
-print(f"Test-Accuracy: {accuracy_percent:.2f}% ({correct}/{total} korrekt)")
+print(f"Test accuracy: {accuracy_percent:.2f}% ({correct}/{total} correct)")
